@@ -1,0 +1,109 @@
+import speech_recognition as sr
+import webbrowser
+import wikipedia
+import os
+import uuid
+from gtts import gTTS
+
+# Configurar Wikipedia en portugués
+wikipedia.set_lang("pt")
+
+def falar(texto):
+    """Función para convertir texto en voz con manejo de errores"""
+    try:
+        # Crear directorio temporal si no existe
+        temp_dir = os.path.join(os.getcwd(), "temp_audio")
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # Generar nombre de archivo único
+        archivo = os.path.join(temp_dir, f"resposta_{uuid.uuid4().hex}.mp3")
+        
+        tts = gTTS(text=texto, lang='pt')
+        tts.save(archivo)
+        
+        # Reproducir y eliminar después de usar
+        if os.name == 'nt':
+            os.system(f"start {archivo}")
+        else:
+            os.system(f"mpg321 {archivo}")
+            
+        os.remove(archivo)
+        
+    except PermissionError:
+        print("Error: Permisos insuficientes para acceder al archivo")
+    except Exception as e:
+        print(f"Error inesperado en reproducción: {str(e)}")
+
+def ouvir_microfone():
+    """Función para escuchar y reconocer voz mejorada"""
+    microfone = sr.Recognizer()
+    try:
+        with sr.Microphone() as source:
+            microfone.adjust_for_ambient_noise(source, duration=0.5)
+            print("Aguardando comando...")
+            audio = microfone.listen(source, timeout=5)
+
+        try:
+            frase = microfone.recognize_google(audio, language='pt-BR').lower()
+            print("Você disse:", frase)
+            return frase
+        except sr.UnknownValueError:
+            print("Não entendi")
+            return ""
+        except sr.RequestError:
+            print("Serviço indisponível")
+            return ""
+            
+    except sr.WaitTimeoutError:
+        print("Tempo de espera excedido")
+        return ""
+
+def executar_comando(frase):
+    """Ejecuta acciones con mejor manejo de errores"""
+    try:
+        if 'wikipédia' in frase:
+            termo = frase.split('pesquisar na wikipédia')[-1].strip()
+            if not termo:
+                falar("Por favor, especifique o termo de pesquisa")
+                return
+            
+            try:
+                resumo = wikipedia.summary(termo, sentences=1)
+                falar(f"Segundo a Wikipedia: {resumo}")
+                webbrowser.open(f"https://pt.wikipedia.org/wiki/{termo}")
+            except wikipedia.exceptions.DisambiguationError as e:
+                falar(f"Múltiplos resultados encontrados. Por favor seja mais específico.")
+            except wikipedia.exceptions.PageError:
+                falar("Não encontrei informações sobre isso na Wikipedia")
+        
+        elif 'youtube' in frase:
+            falar("Abrindo o YouTube")
+            webbrowser.open("https://www.youtube.com")
+        
+        elif 'sair' in frase or 'encerrar' in frase:
+            falar("Até logo! Desligando sistema")
+            exit()
+        
+        else:
+            falar("Comando não reconhecido")
+            
+    except Exception as e:
+        print(f"Erro ao executar comando: {str(e)}")
+        falar("Ocorreu um erro ao processar seu comando")
+
+# Loop principal del sistema mejorado
+if __name__ == "__main__":
+    falar("Sistema de voz ativado. Como posso ajudar?")
+    
+    while True:
+        try:
+            frase = ouvir_microfone()
+            
+            if frase and 'assistente' in frase:
+                comando = frase.replace('assistente', '').strip()
+                if comando:
+                    executar_comando(comando)
+                    
+        except KeyboardInterrupt:
+            falar("Sistema sendo desligado")
+            exit()
