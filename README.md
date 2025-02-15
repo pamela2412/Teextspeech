@@ -6,7 +6,11 @@ Por exemplo assistente abrir Youtube
 
 Lembrando que tem que instalar dependencias como:
 pip install SpeechRecognition
+
+
 pip install pyaudio
+
+
 pip install SpeechRecognition  wikipedia gtts pydub
 
 
